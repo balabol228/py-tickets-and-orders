@@ -29,7 +29,6 @@ class Movie(models.Model):
     actors = models.ManyToManyField(to=Actor, related_name="movies")
     genres = models.ManyToManyField(to=Genre, related_name="movies")
 
-
     class Meta:
         indexes = [
             models.Index(fields=["title"]),
@@ -67,7 +66,10 @@ class MovieSession(models.Model):
 
 class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -77,17 +79,18 @@ class Order(models.Model):
 
 
 class Ticket(models.Model):
-    movie_session = models.ForeignKey("MovieSession", on_delete=models.CASCADE, related_name="tickets")
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="tickets")
+    movie_session = models.ForeignKey(
+        "MovieSession",
+        on_delete=models.CASCADE,
+        related_name="tickets"
+    )
+    order = models.ForeignKey(
+        "Order",
+        on_delete=models.CASCADE,
+        related_name="tickets"
+    )
     row = models.IntegerField()
     seat = models.IntegerField()
-
-    def __str__(self) -> str:
-        return (
-            f"{self.movie_session.movie.title} "
-            f"{self.movie_session.show_time.strftime('%Y-%m-%d %H:%M:%S')} "
-            f"(row: {self.row}, seat: {self.seat})"
-        )
 
     class Meta:
         constraints = [
@@ -100,10 +103,23 @@ class Ticket(models.Model):
     def clean(self) -> None:
         hall = self.movie_session.cinema_hall
         if not (1 <= self.row <= hall.rows):
-            raise ValidationError({"row": f"row number must be in available range: (1, rows): (1, {hall.rows})"})
+            raise ValidationError({
+                "row": f"row number must be in available range: "
+                       f"(1, rows): (1, {hall.rows})"
+            })
         if not (1 <= self.seat <= hall.seats_in_row):
-            raise ValidationError({"seat": f"seat number must be in available range: (1, seats_in_row): (1, {hall.seats_in_row})"})
+            raise ValidationError({
+                "seat": f"seat number must be in available range: "
+                        f"(1, seats_in_row): (1, {hall.seats_in_row})"
+            })
 
     def save(self, *args, **kwargs) -> None:
         self.full_clean()
         super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return (
+            f"{self.movie_session.movie.title} "
+            f"{self.movie_session.show_time.strftime('%Y-%m-%d %H:%M:%S')} "
+            f"(row: {self.row}, seat: {self.seat})"
+        )
